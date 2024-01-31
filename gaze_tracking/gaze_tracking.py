@@ -1,9 +1,31 @@
 from __future__ import division
 import os
+import math
 import cv2
 import dlib
 from .eye import Eye
 from .calibration import Calibration
+import numpy as np
+
+
+def calculate_eye_angle(eye_center, eyeball_coords):
+    # Convert coordinates to numpy arrays
+    eye_center = np.array(eye_center)
+    eyeball_coords = np.array(eyeball_coords)
+
+    # Compute the vector from eye center to eyeball
+    gaze_vector = eyeball_coords - eye_center
+
+    # Calculate the angle between the gaze vector and the horizontal axis
+    angle_rad = np.arctan2(gaze_vector[1], gaze_vector[0])
+
+    # Convert radians to degrees
+    angle_deg = np.degrees(angle_rad)
+
+    return angle_deg
+
+
+
 
 
 class GazeTracking(object):
@@ -26,6 +48,7 @@ class GazeTracking(object):
         cwd = os.path.abspath(os.path.dirname(__file__))
         model_path = os.path.abspath(os.path.join(cwd, "trained_models/shape_predictor_68_face_landmarks.dat"))
         self._predictor = dlib.shape_predictor(model_path)
+
 
     @property
     def pupils_located(self):
@@ -85,7 +108,42 @@ class GazeTracking(object):
             pupil_left = self.eye_left.pupil.x / (self.eye_left.center[0] * 2 - 10)
             pupil_right = self.eye_right.pupil.x / (self.eye_right.center[0] * 2 - 10)
             return (pupil_left + pupil_right) / 2
+    
+    @staticmethod
+    def calculate_eye_angle(eye_center, eyeball_coords):
+        # Convert coordinates to numpy arrays
+        eye_center = np.array(eye_center)
+        eyeball_coords = np.array(eyeball_coords)
 
+        # Compute the vector from eye center to eyeball
+        gaze_vector = eyeball_coords - eye_center
+
+        # Calculate the angle between the gaze vector and the horizontal axis
+        angle_rad = np.arctan2(gaze_vector[1], gaze_vector[0])
+
+        # Convert radians to degrees
+        angle_deg = np.degrees(angle_rad)
+
+        return angle_deg
+        
+    def calculate_left_angle(self):
+        if self.pupils_located:
+            # Example usage:
+            left_eyeball_coords = (self.eye_left.pupil.x, self.eye_left.pupil.y)
+            left_eye_center = (self.eye_right.center[0], self.eye_right.center[1])
+
+            left_eye_angle = GazeTracking.calculate_eye_angle(left_eye_center, left_eyeball_coords)
+            return abs(math.ceil(left_eye_angle))
+
+    def calculate_right_angle(self):
+        if self.pupils_located:
+            # Example usage:
+            right_eyeball_coords = (self.eye_right.pupil.x, self.eye_right.pupil.y)
+            right_eye_center = (self.eye_right.center[0], self.eye_right.center[1])
+
+            right_eye_angle = GazeTracking.calculate_eye_angle(right_eye_center, right_eyeball_coords)
+            return abs(math.ceil(right_eye_angle))
+    
     def vertical_ratio(self):
         """Returns a number between 0.0 and 1.0 that indicates the
         vertical direction of the gaze. The extreme top is 0.0,
